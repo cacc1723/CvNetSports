@@ -1,0 +1,96 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["clientExtensions"] // Habilitamos extensiones
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  SUPER_ADMIN      // CVNetSolutions
+  ACADEMY_ADMIN    // Dueño
+  COACH            // Entrenador
+  REPRESENTATIVE   // Cliente final
+}
+
+// 1. Tenant (La Academia)
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique // Identificador único legible (ej: "boca-juniors-gye")
+  planStatus  String   @default("ACTIVE") // ACTIVE, SUSPENDED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  students    Student[]
+  plays       TacticalPlay[]
+
+  @@map("tenants") // Buenas práctica: tablas en plural y minúsculas en BD
+}
+
+// 2. Usuarios
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String   // Hash
+  fullName    String
+  role        Role     @default(REPRESENTATIVE)
+  
+  // Multi-tenancy
+  tenantId    String?  // Nullable solo para SUPER_ADMIN
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  
+  // Auditoría
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  plays       TacticalPlay[] // Jugadas creadas
+
+  @@index([tenantId]) // Indexado para velocidad de filtrado
+  @@map("users")
+}
+
+// 3. Estudiantes (Producto principal de cobro)
+model Student {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String
+  birthDate   DateTime
+  isActive    Boolean  @default(true) // Switch para cobro
+  photoUrl    String?
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("students")
+}
+
+// 4. Pizarra Táctica
+model TacticalPlay {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  canvasData  Json     // JSON de Fabric.js
+  thumbnailUrl String? 
+  
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("tactical_plays")
+}

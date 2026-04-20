@@ -1,0 +1,46 @@
+services:
+  # Base de Datos
+  postgres:
+      image: postgres:15-alpine
+      container_name: cvnetsports_db
+      environment:
+        # Quitamos el ${DB_USER} y ponemos los valores directamente
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: admin123
+        POSTGRES_DB: cvnetsports
+      ports:
+        # Veo en tu captura que usas el 5436, dejémoslo así para evitar conflictos con tu PC
+        - "5436:5432" 
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+
+  # Backend API
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cvnetsports_api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+
+  # Frontend (Vite)
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cvnetsports_web
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:3000
+
+volumes:
+  postgres_data:

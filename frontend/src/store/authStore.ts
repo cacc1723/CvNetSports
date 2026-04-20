@@ -1,0 +1,27 @@
+// frontend/src/store/authStore.ts
+import { create } from 'zustand';
+
+interface AuthState {
+  token: string | null;
+  user: any | null;
+  setAuth: (token: string, user: any) => void;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  // Al iniciar, revisamos si hay un token guardado en el navegador
+  token: localStorage.getItem('cvnet_token'),
+  user: JSON.parse(localStorage.getItem('cvnet_user') || 'null'),
+  
+  setAuth: (token, user) => {
+    localStorage.setItem('cvnet_token', token);
+    localStorage.setItem('cvnet_user', JSON.stringify(user));
+    set({ token, user });
+  },
+  
+  logout: () => {
+    localStorage.removeItem('cvnet_token');
+    localStorage.removeItem('cvnet_user');
+    set({ token: null, user: null });
+  },
+}));
